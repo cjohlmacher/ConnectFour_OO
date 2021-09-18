@@ -1,0 +1,140 @@
+body {
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: linear-gradient(1deg,#e66465, 20%, #89a1ef)
+}
+
+.banner {
+  color:azure;
+  font-size: 2em;
+}
+
+#board {
+  border-spacing: 0px;
+}
+
+#game.winner {
+  animation-name: rotate;
+  animation-duration: 0.5s;
+  animation-iteration-count: 2;
+  animation-timing-function: linear;
+}
+
+@keyframes rotate {
+  33% {
+    transform: rotateZ(5deg);
+  }
+  66% {
+    transform: rotateZ(-5deg);
+  }
+  100% {
+    transform: rotateZ(0deg);
+  }
+}
+
+#board td {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  background-color: rgb(255,255,255,0);
+  border: solid 3px #fff;
+}
+
+/* pieces are div within game table cells: draw as colored circles */
+
+.piece {
+  position: absolute;
+  top: 0px;
+  animation-name: slidein;
+  animation-duration: var(--fallTime);
+  margin: 5px;
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+}
+
+@keyframes slidein {
+  from {
+    transform: translateY(var(--fallDistance));
+  }
+}
+
+.piece.winner {
+  animation-name: falloff;
+  animation-duration: 2.5s;
+}
+
+@keyframes falloff {
+  0% {
+    transform: translateY(0px);
+  }
+  100% {
+    transform: translateY(90vh);
+  }
+}
+
+#board td > .piece, .piece > #board td {
+  z-index: -1;
+  position: relative;
+}
+
+#board td.rightmost {
+  border-right: solid 3px #fff;
+}
+
+#board td.leftmost {
+  border-left: solid 5px #fff;
+}
+
+/* TODO: make pieces red/blue,  depending on player 1/2 piece */
+
+.p1 {
+  background-color: #00308F;
+  /* background-color: #32CBFF; */
+}
+
+.p2 {
+  background-color: #fe5d9f;
+}
+
+/* column-top is table row of clickable areas for each column */
+
+#column-top {
+  margin-right: 4px;
+}
+
+#column-top td {
+  border: dashed 1px lightgray;
+  padding: 2px 3px 0px;
+  border-bottom: solid 3px #cebebe;
+}
+
+/* preview piece shows up in the column-top table row */
+
+.preview {
+  visibility: hidden;
+  background-color: #00308F;
+  opacity: 50%;
+  width: 80%;
+  height: 80%;
+  margin: 5px;
+  border-radius: 50%;
+}
+
+#column-top td:hover .preview{
+  visibility: visible;
+}
+
+#game {
+  border-bottom: solid 3px #fff;
+}
+
+button.start {
+  background-color: #b7b6fb;
+  border-radius: 5px;
+  margin: 8px;
+  font-size: 1em;
+}
