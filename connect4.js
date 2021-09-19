@@ -4,29 +4,160 @@
  * column until a player gets four-in-a-row (horiz, vert, or diag) or until
  * board fills (tie)
  */
+class Activity {
+  constructor(maxPlayers) {
+    this.maxPlayers = maxPlayers; 
+    this.activeGame = null; // The current instance of Game
+    this.settingUp = false; // Prevents action during game set up
+    this.defaults = new Map(
+      [[1, "#FE5D9F"],[2, "#01308F"], [3, "#FFFFFF"], [4, "#000000"]]
+    ); // Default colors for color selection
+    this.createPlayerSelection();
+    this.createColorSelection();
+    this.makeStartButton();
+  }
+
+  //create div for selecting number of players
+  createPlayerSelection() {
+    const playerSelect = document.querySelector(".player-select");
+    for (let i=1; i<this.maxPlayers; i++) {
+      const playerButton = document.createElement("button");
+      playerButton.classList.add("player-button");
+      playerButton.innerText = i+1;
+      playerButton.addEventListener('click', this.handlePlayerSelect.bind(this));
+      playerSelect.append(playerButton);
+    };
+  };
+
+  // Create div for selecting player colors
+  createColorSelection() {
+    const colorSelect = document.querySelector(".color-select");
+    const form = document.createElement("form");
+    for (let i=0;i<2;i++){
+      this.updateColorInputs(i,form);
+    };
+    colorSelect.append(form);
+  };
+
+  // Handle new player selection
+  handlePlayerSelect(evt){
+    const playerCount = +evt.target.innerText;
+    const colorDivs = document.querySelectorAll(".color-div");
+    const colorDivArray = [...colorDivs];
+    while (colorDivArray.length > playerCount) {
+      colorDivArray.pop().remove();
+    }
+    const form = document.querySelector("form");
+    for (let i=colorDivs.length; i < playerCount; i++){
+      this.updateColorInputs(i,form);
+    };
+  };
+
+  // Update the color inputs based on number of players
+  updateColorInputs(playerNumber,container){
+    const colorSelectDiv = document.createElement("div");
+    colorSelectDiv.classList.add("color-div");
+    const colorInput = document.createElement("input");
+    const colorLabel = document.createElement("label");
+    colorInput.type = "color";
+    colorLabel.setAttribute("for",`Player ${playerNumber+1}`);
+    colorLabel.innerText = `Player ${playerNumber+1}:`;
+    colorInput.setAttribute("name",`Player ${playerNumber+1}`);
+    colorInput.value = this.defaults.get(playerNumber+1);
+    colorInput.classList.add("color-input");
+    colorSelectDiv.append(colorLabel);
+    colorSelectDiv.append(colorInput);
+    container.append(colorSelectDiv); 
+  };
+
+  // Make a start button
+  makeStartButton() {
+    const startButton = document.createElement("button");
+    startButton.innerText = "Start New Game";
+    startButton.classList.add("start");
+    startButton.addEventListener('click',this.startGame.bind(this));
+    document.body.append(startButton);
+  };
+
+  // Functionality when start button is clicked
+  startGame(){
+    //disable button if already setting up new game
+    if (this.settingUp) {
+      return;
+    };
+    let delay = 0;
+    this.settingUp = true;
+    // tear down existing game
+    if (this.activeGame) {
+      this.activeGame.endGameCollapse();
+      delay = 1500;
+    };
+    // use inputs to create new game
+    const colorInputs = document.querySelectorAll("form input");
+    const players = [];
+    for (let i=0; i < colorInputs.length; i++){
+      players.push(new Player(colorInputs[i].value,i+1));
+    };
+    setTimeout( ()=>{
+      this.activeGame = new Game(7,6,...players);
+      this.settingUp = false;
+    },delay);
+  };
+};
+
+class Player {
+  constructor(color,id) {
+    this.color = color;
+    this.id = id;
+  }
+};
+
 class Game {
-  constructor(width,height) {
+  constructor(width,height,...players) {
     this.width = width;
     this.height = height;
-    this.currPlayer = 1;  // active player: 1 or 2
+    this.players = players;
+    this.currPlayer = players[0];  // active player
+    this.turnOrder = this.createTurnOrder();
     this.board = [];  // array of rows, each row is array of cells  (board[y][x])
     this.winner = false; //sets whether there is a winner declared for the current game
     this.makeBoard();
     this.makeHtmlBoard();
-    this.makeStartButton();
   };
   /** makeBoard: create in-JS board structure:
   board = array of rows, each row is array of cells  (board[y][x])
   */
+  createTurnOrder() {
+    const order = new Map;
+    for (let i=0; i<this.players.length; i++) {
+      order.set(this.players[i],this.players[i+1]);
+    };
+    order.set(this.players[this.players.length-1],this.players[0]);
+    return order;
+  };
+
+  nextPlayer() {
+    this.currPlayer = this.turnOrder.get(this.currPlayer);
+  }
+
   makeBoard() {
     for (let y = 0; y < this.height; y++) {
       this.board.push(Array.from({ length: this.width }));
     }
   };
-
+  // make a start button
+  // makeStartButton() {
+  //   const startButton = document.createElement("button");
+  //   startButton.innerText = "Start New Game";
+  //   startButton.classList.add("start");
+  //   startButton.addEventListener('click',this.endGameCollapse.bind(this));
+  //   document.body.append(startButton);
+  // };
   /** makeHtmlBoard: make HTML table and row of column tops. */
   makeHtmlBoard() {
-    const htmlBoard = document.getElementById('board');
+    const game = document.getElementById("game");
+    const htmlBoard = document.createElement("table");
+    htmlBoard.setAttribute("id","board");
 
     // make column tops (clickable area for adding a piece to that column)
     const top = document.createElement('tr');
@@ -39,11 +170,13 @@ class Game {
       const previewPiece = document.createElement("div");
       previewPiece.setAttribute("id",x);
       previewPiece.classList.add("preview");
+      previewPiece.style.backgroundColor = this.currPlayer.color;
       headCell.append(previewPiece);
       top.append(headCell);
     }
 
     htmlBoard.append(top);
+    game.append(htmlBoard);
 
     // make main part of board
     for (let y = 0; y < this.height; y++) {
@@ -60,15 +193,6 @@ class Game {
     }
   };
 
-  // make a start button
-  makeStartButton() {
-    const startButton = document.createElement("button");
-    startButton.innerText = "Start New Game";
-    startButton.classList.add("start");
-    startButton.addEventListener('click',this.endGameCollapse.bind(this));
-    document.body.append(startButton);
-  };
-
   /** findSpotForCol: given column x, return top empty y (null if filled) */
   findSpotForCol(x) {
     for (let y = this.height - 1; y >= 0; y--) {
@@ -83,7 +207,7 @@ class Game {
   placeInTable(y, x) {
     const piece = document.createElement('div');
     piece.classList.add('piece');
-    piece.classList.add(`p${this.currPlayer}`);
+    piece.style.backgroundColor = this.currPlayer.color;
     piece.style.top = -50 * (y + 2);
     piece.style.setProperty('--fallDistance',`-${30+y*54}px`); //calculate animation distance
     piece.style.setProperty('--fallTime',`${0.5+y/2.0}s`); //calculate animation duration
@@ -121,7 +245,7 @@ class Game {
     
     // check for win
     if (this.checkForWin()) {
-      return this.endGame(`Player ${this.currPlayer} won!`);
+      return this.endGame(`Player ${this.currPlayer.id} won!`);
     }
     
     // check for tie
@@ -129,12 +253,12 @@ class Game {
       return this.endGame('Tie!');
     }
 
-    // switch players
+    // move on to next player
+    this.nextPlayer();
     const previewPieces = document.querySelectorAll(".preview");
     previewPieces.forEach( (previewPiece) => {
-      previewPiece.style.backgroundColor = previewPiece.style.backgroundColor === "rgb(254, 93, 159)" ? 'rgb(0,48,143)' : 'rgb(254,93,159)';
+      previewPiece.style.backgroundColor = this.currPlayer.color;
     });
-    this.currPlayer = this.currPlayer === 1 ? 2 : 1;
   };
 
   /** checkForWin: check board cell-by-cell for "does a win start here?" */
@@ -172,19 +296,18 @@ class Game {
   };
 
   endGameCollapse() {
+    this.winner = true;
     const gameboard = document.querySelector("#game");
     gameboard.classList.toggle('winner');
-    this.board.length = 0;
-    this.makeBoard();
     const pieces = document.querySelectorAll(".piece");
       for (let piece of pieces) {
         piece.classList.toggle('winner');
-        setTimeout(this.removePieces.bind(this),2000); //removes pieces after animation is finished
       };
     setTimeout(() => {
+      const game = document.querySelector("#board");
       gameboard.classList.toggle('winner');
-      this.winner = false;
-    },2000); //resets animation trigger after animation is finished
+      game.remove();
+    },1500); //deletes game after 2 seconds
   };
 
   removePieces() {
@@ -195,4 +318,4 @@ class Game {
   };
 };
 
-const ConnectFour = new Game(7,6);
+const ConnectFour = new Activity(4);
